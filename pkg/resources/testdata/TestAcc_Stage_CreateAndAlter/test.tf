@@ -13,6 +13,7 @@ resource "snowflake_stage" "test" {
   database            = snowflake_database.test.name
   comment             = var.comment
   url                 = var.url
+  endpoint            = var.endpoint
   storage_integration = var.storage_integration
   credentials         = var.credentials
   encryption          = var.encryption

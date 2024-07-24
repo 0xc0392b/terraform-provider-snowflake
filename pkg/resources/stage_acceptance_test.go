@@ -28,14 +28,14 @@ func TestAcc_StageAlterWhenBothURLAndStorageIntegrationChange(t *testing.T) {
 		CheckDestroy: acc.CheckDestroy(t, resources.Stage),
 		Steps: []resource.TestStep{
 			{
-				Config: stageIntegrationConfig(name, "si1", "s3://foo/", acc.TestDatabaseName, acc.TestSchemaName),
+				Config: stageIntegrationConfig(name, "si1", "s3://foo/", "s3.test.com", acc.TestDatabaseName, acc.TestSchemaName),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("snowflake_stage.test", "name", name),
 					resource.TestCheckResourceAttr("snowflake_stage.test", "url", "s3://foo/"),
 				),
 			},
 			{
-				Config: stageIntegrationConfig(name, "changed", "s3://changed/", acc.TestDatabaseName, acc.TestSchemaName),
+				Config: stageIntegrationConfig(name, "changed", "s3://changed/", "s3.test.com", acc.TestDatabaseName, acc.TestSchemaName),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("snowflake_stage.test", "name", name),
 					resource.TestCheckResourceAttr("snowflake_stage.test", "url", "s3://changed/"),
@@ -54,6 +54,7 @@ func TestAcc_Stage_CreateAndAlter(t *testing.T) {
 	schemaName := acc.TestClient().Ids.Alpha()
 	name := acc.TestClient().Ids.Alpha()
 	url := "s3://foo/"
+	endpoint := "s3.test.com"
 	comment := random.Comment()
 	initialStorageIntegration := ""
 	credentials := fmt.Sprintf("AWS_KEY_ID = '%s' AWS_SECRET_KEY = '%s'", awsKeyId, awsSecretKey)
@@ -61,6 +62,7 @@ func TestAcc_Stage_CreateAndAlter(t *testing.T) {
 	copyOptionsWithQuotes := "ON_ERROR = 'CONTINUE'"
 
 	changedUrl := awsBucketUrl + "/some-path"
+	changedEndpoint := "s3.other.net"
 	changedStorageIntegration := ids.PrecreatedS3StorageIntegration
 	changedEncryption := "TYPE = 'AWS_SSE_S3'"
 	changedFileFormat := "TYPE = JSON NULL_IF = []"
@@ -69,12 +71,13 @@ func TestAcc_Stage_CreateAndAlter(t *testing.T) {
 	changedComment := random.Comment()
 	copyOptionsWithoutQuotes := "ON_ERROR = CONTINUE"
 
-	configVariables := func(url string, storageIntegration string, credentials string, encryption string, fileFormat string, comment string, copyOptions string) config.Variables {
+	configVariables := func(url string, endpoint string, storageIntegration string, credentials string, encryption string, fileFormat string, comment string, copyOptions string) config.Variables {
 		return config.Variables{
 			"database":            config.StringVariable(databaseName),
 			"schema":              config.StringVariable(schemaName),
 			"name":                config.StringVariable(name),
 			"url":                 config.StringVariable(url),
+			"endpoint":            config.StringVariable(endpoint),
 			"storage_integration": config.StringVariable(storageIntegration),
 			"credentials":         config.StringVariable(credentials),
 			"encryption":          config.StringVariable(encryption),
@@ -95,7 +98,7 @@ func TestAcc_Stage_CreateAndAlter(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				ConfigDirectory: config.TestNameDirectory(),
-				ConfigVariables: configVariables(url, initialStorageIntegration, credentials, encryption, "", comment, copyOptionsWithQuotes),
+				ConfigVariables: configVariables(url, endpoint, initialStorageIntegration, credentials, encryption, "", comment, copyOptionsWithQuotes),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "database", databaseName),
 					resource.TestCheckResourceAttr(resourceName, "schema", schemaName),
@@ -106,6 +109,7 @@ func TestAcc_Stage_CreateAndAlter(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "file_format", ""),
 					resource.TestCheckResourceAttr(resourceName, "copy_options", copyOptionsWithoutQuotes),
 					resource.TestCheckResourceAttr(resourceName, "url", url),
+					resource.TestCheckResourceAttr(resourceName, "endpoint", endpoint),
 					resource.TestCheckResourceAttr(resourceName, "comment", comment),
 				),
 				ConfigPlanChecks: resource.ConfigPlanChecks{
@@ -114,7 +118,7 @@ func TestAcc_Stage_CreateAndAlter(t *testing.T) {
 			},
 			{
 				ConfigDirectory: config.TestNameDirectory(),
-				ConfigVariables: configVariables(changedUrl, changedStorageIntegration.Name(), credentials, changedEncryption, changedFileFormat, changedComment, copyOptionsWithoutQuotes),
+				ConfigVariables: configVariables(changedUrl, changedEndpoint, changedStorageIntegration.Name(), credentials, changedEncryption, changedFileFormat, changedComment, copyOptionsWithoutQuotes),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "database", databaseName),
 					resource.TestCheckResourceAttr(resourceName, "schema", schemaName),
@@ -125,6 +129,7 @@ func TestAcc_Stage_CreateAndAlter(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "file_format", changedFileFormat),
 					resource.TestCheckResourceAttr(resourceName, "copy_options", copyOptionsWithoutQuotes),
 					resource.TestCheckResourceAttr(resourceName, "url", changedUrl),
+					resource.TestCheckResourceAttr(resourceName, "endpoint", changedEndpoint),
 					resource.TestCheckResourceAttr(resourceName, "comment", changedComment),
 				),
 				ConfigPlanChecks: resource.ConfigPlanChecks{
@@ -133,7 +138,7 @@ func TestAcc_Stage_CreateAndAlter(t *testing.T) {
 			},
 			{
 				ConfigDirectory: config.TestNameDirectory(),
-				ConfigVariables: configVariables(changedUrl, changedStorageIntegration.Name(), credentials, changedEncryption, changedFileFormatWithQuotes, changedComment, copyOptionsWithoutQuotes),
+				ConfigVariables: configVariables(changedUrl, changedEndpoint, changedStorageIntegration.Name(), credentials, changedEncryption, changedFileFormatWithQuotes, changedComment, copyOptionsWithoutQuotes),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "database", databaseName),
 					resource.TestCheckResourceAttr(resourceName, "schema", schemaName),
@@ -144,6 +149,7 @@ func TestAcc_Stage_CreateAndAlter(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "file_format", changedFileFormatWithoutQuotes),
 					resource.TestCheckResourceAttr(resourceName, "copy_options", copyOptionsWithoutQuotes),
 					resource.TestCheckResourceAttr(resourceName, "url", changedUrl),
+					resource.TestCheckResourceAttr(resourceName, "endpoint", changedEndpoint),
 					resource.TestCheckResourceAttr(resourceName, "comment", changedComment),
 				),
 				ConfigPlanChecks: resource.ConfigPlanChecks{
@@ -157,7 +163,7 @@ func TestAcc_Stage_CreateAndAlter(t *testing.T) {
 			},
 			{
 				ConfigDirectory: config.TestNameDirectory(),
-				ConfigVariables: configVariables(url, initialStorageIntegration, credentials, encryption, "", comment, copyOptionsWithoutQuotes),
+				ConfigVariables: configVariables(url, endpoint, initialStorageIntegration, credentials, encryption, "", comment, copyOptionsWithoutQuotes),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "database", databaseName),
 					resource.TestCheckResourceAttr(resourceName, "schema", schemaName),
@@ -168,6 +174,7 @@ func TestAcc_Stage_CreateAndAlter(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "file_format", ""),
 					resource.TestCheckResourceAttr(resourceName, "copy_options", copyOptionsWithoutQuotes),
 					resource.TestCheckResourceAttr(resourceName, "url", url),
+					resource.TestCheckResourceAttr(resourceName, "endpoint", endpoint),
 					resource.TestCheckResourceAttr(resourceName, "comment", comment),
 				),
 				ConfigPlanChecks: resource.ConfigPlanChecks{
@@ -178,7 +185,7 @@ func TestAcc_Stage_CreateAndAlter(t *testing.T) {
 	})
 }
 
-func stageIntegrationConfig(name string, siNameSuffix string, url string, databaseName string, schemaName string) string {
+func stageIntegrationConfig(name string, siNameSuffix string, url string, endpoint string, databaseName string, schemaName string) string {
 	return fmt.Sprintf(`
 resource "snowflake_storage_integration" "test" {
 	name = "%[1]s%[2]s"
@@ -191,9 +198,10 @@ resource "snowflake_storage_integration" "test" {
 resource "snowflake_stage" "test" {
 	name = "%[1]s"
 	url = "%[3]s"
+	endpoint = "%[4]s"
 	storage_integration = snowflake_storage_integration.test.name
-	database = "%[4]s"
-	schema = "%[5]s"
+	database = "%[5]s"
+	schema = "%[6]s"
 }
-`, name, siNameSuffix, url, databaseName, schemaName)
+`, name, siNameSuffix, url, endpoint, databaseName, schemaName)
 }

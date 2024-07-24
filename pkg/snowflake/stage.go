@@ -15,6 +15,7 @@ type StageBuilder struct {
 	db                 string
 	schema             string
 	url                string
+	endpoint           string
 	credentials        string
 	directory          string
 	storageIntegration string
@@ -37,6 +38,12 @@ func (sb *StageBuilder) QualifiedName() string {
 // WithURL adds a URL to the StageBuilder.
 func (sb *StageBuilder) WithURL(u string) *StageBuilder {
 	sb.url = u
+	return sb
+}
+
+// WithEndpoint adds an s3 compatible endpoint to the StageBuilder.
+func (sb *StageBuilder) WithEndpoint(e string) *StageBuilder {
+	sb.endpoint = e
 	return sb
 }
 
@@ -132,6 +139,10 @@ func (sb *StageBuilder) Create() string {
 		q.WriteString(fmt.Sprintf(` URL = '%v'`, sb.url))
 	}
 
+	if sb.endpoint != "" {
+		q.WriteString(fmt.Sprintf(` ENDPOINT = '%v'`, sb.endpoint))
+	}
+
 	if sb.credentials != "" {
 		q.WriteString(fmt.Sprintf(` CREDENTIALS = (%v)`, sb.credentials))
 	}
@@ -181,6 +192,11 @@ func (sb *StageBuilder) RemoveComment() string {
 // ChangeURL returns the SQL query that will update the url on the stage.
 func (sb *StageBuilder) ChangeURL(u string) string {
 	return fmt.Sprintf(`ALTER STAGE %v SET URL = '%v'`, sb.QualifiedName(), u)
+}
+
+// ChangeEndpoint returns the SQL query that will update the endpoint on the stage.
+func (sb *StageBuilder) ChangeEndpoint(e string) string {
+	return fmt.Sprintf(`ALTER STAGE %v SET ENDPOINT = '%v'`, sb.QualifiedName(), e)
 }
 
 // ChangeCredentials returns the SQL query that will update the credentials on the stage.

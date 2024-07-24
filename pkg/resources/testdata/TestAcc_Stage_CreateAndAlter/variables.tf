@@ -18,6 +18,10 @@ variable "url" {
   type = string
 }
 
+variable "endpoint" {
+  type = string
+}
+
 variable "storage_integration" {
   type = string
 }

@@ -38,6 +38,11 @@ var stageSchema = map[string]*schema.Schema{
 		Optional:    true,
 		Description: "Specifies the URL for the stage.",
 	},
+	"endpoint": {
+		Type:        schema.TypeString,
+		Optional:    true,
+		Description: "Specifies the endpoint for the stage.",
+	},
 	"credentials": {
 		Type:        schema.TypeString,
 		Optional:    true,
@@ -120,6 +125,10 @@ func CreateStage(ctx context.Context, d *schema.ResourceData, meta any) diag.Dia
 
 	if v, ok := d.GetOk("url"); ok {
 		builder.WithURL(v.(string))
+	}
+
+	if v, ok := d.GetOk("endpoint"); ok {
+		builder.WithEndpoint(v.(string))
 	}
 
 	if v, ok := d.GetOk("credentials"); ok {
@@ -210,6 +219,10 @@ func ReadStage(ctx context.Context, d *schema.ResourceData, meta any) diag.Diagn
 		return diag.FromErr(err)
 	}
 
+	if err := d.Set("endpoint", findStagePropertyValueByName(properties, "ENDPOINT")); err != nil {
+		return diag.FromErr(err)
+	}
+
 	fileFormat := make([]string, 0)
 	for _, property := range properties {
 		if property.Parent == "STAGE_FILE_FORMAT" && property.Value != property.Default {
@@ -296,6 +309,14 @@ func UpdateStage(ctx context.Context, d *schema.ResourceData, meta any) diag.Dia
 			q := builder.ChangeURL(url.(string))
 			if err := snowflake.Exec(db, q); err != nil {
 				return diag.Errorf("error updating stage url on %v", d.Id())
+			}
+		}
+
+		if d.HasChange("endpoint") {
+			endpoint := d.Get("endpoint")
+			q := builder.ChangeEndpoint(endpoint.(string))
+			if err := snowflake.Exec(db, q); err != nil {
+				return diag.Errorf("error updating stage endpoint on %v", d.Id())
 			}
 		}
 	}
